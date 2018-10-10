@@ -133,15 +133,14 @@ def main():
     fit_avg = logbook.select("avg")
 
     fig, ax1 = plt.subplots()
-    line1 = ax1.plot(gen, fit_max, "b-", label="Maximum")
     ax1.set_xlabel("Generation")
-    ax1.set_ylabel("Fitness", color="b")
+    ax1.set_ylabel("Fitness")
+    line1 = ax1.plot(gen, fit_max, "b-", label="Maximum")
+    line2 = ax1.plot(gen, fit_avg, "r-", label="Average")
     for tl in ax1.get_yticklabels():
         tl.set_color("b")
 
-    ax2 = ax1.twinx()
-    line2 = ax2.plot(gen, fit_avg, "r-", label="Average")
-    for tl in ax2.get_yticklabels():
+    for tl in ax1.get_yticklabels():
         tl.set_color("r")
 
 
