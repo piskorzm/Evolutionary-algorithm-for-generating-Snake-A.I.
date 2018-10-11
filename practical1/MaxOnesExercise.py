@@ -65,7 +65,7 @@ def mutUniformReal(individual, indpb):
 
 toolbox.register("evaluate", evalOneMax)
 toolbox.register("mate", tools.cxTwoPoint)
-toolbox.register("mutate", mutUniformReal, indpb=0.2)
+toolbox.register("mutate", tools.mutGaussian, mu=0, sigma=0.2, indpb=0.2)
 toolbox.register("select", tools.selTournament, tournsize=3)
 
 toolbox.decorate("mate", checkBounds(MIN, MAX))
