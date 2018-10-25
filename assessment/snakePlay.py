@@ -1,6 +1,3 @@
-# This version of the snake game allows you to play the same yourself using the arrow keys.
-# Be sure to run the game from a terminal, and not within a text editor!
-
 import curses
 from curses import KEY_RIGHT, KEY_LEFT, KEY_UP, KEY_DOWN
 import random
@@ -38,14 +35,15 @@ def playGame():
 	ahead = []
 
 	A = "NO"
+
 	while True:
 		win.border(0)
 
-		prevKey = key                                                  # Previous key pressed
-	 	event = win.getch()
-	 	key = key if event == -1 else event 
+		prevKey = key
+		event = win.getch()
+		key = key if event == -1 else event
 
-		if key not in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, 27]:     # If an invalid key is pressed
+		if key not in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, 27]:
 			key = prevKey
 
 	    # Calculates the new coordinates of the head of the snake. NOTE: len(snake) increases
@@ -55,27 +53,27 @@ def playGame():
 	    # Game over if the snake goes through a wall
 		if snake[0][0] == 0 or snake[0][0] == (YSIZE-1) or snake[0][1] == 0 or snake[0][1] == (XSIZE-1): break
 
-		ahead = [ snake[0][0] + (key == KEY_DOWN and 1) + (key == KEY_UP and -1), snake[0][1] + (key == KEY_LEFT and -1) + (key == KEY_RIGHT and 1)] 
+		ahead = [ snake[0][0] + (key == KEY_DOWN and 1) + (key == KEY_UP and -1), snake[0][1] + (key == KEY_LEFT and -1) + (key == KEY_RIGHT and 1)]
 		if ahead in snake:
 			A = "YES"
 
 	    # Game over if the snake runs over itself
 		if snake[0] in snake[1:]: break
-	    
-		if snake[0] in food:                                            # When snake eats the food
+
+ 		# When snake eats the food
+		if snake[0] in food:
 			score += 1
 			food = placeFood(snake,food)
-		else:    
-			last = snake.pop()                                          # [1] If it does not eat the food, it moves forward and so last tail item is removed
+		# [1] If it does not eat the food, it moves forward and so last tail item is removed
+		else:
+			last = snake.pop()
 			win.addch(last[0], last[1], ' ')
 
 		win.addch(snake[0][0], snake[0][1], '#')
 
 	curses.endwin()
-	print A
+	print (A)
 	print("\nFinal score - " + str(score))
-	print
-	print wasAhead
+	print (wasAhead)
 
 playGame()
-
