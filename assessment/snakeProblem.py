@@ -1,4 +1,5 @@
-# This code defines the agent (as in the playable version) in a way that can be called and executed from an evolutionary algorithm. The code is partial and will not execute. You need to add to the code to create an evolutionary algorithm that evolves and executes a snake agent.
+# This code defines the agent (as in the playable version) in a way that can be called and executed from an evolutionary algorithm.
+# The code is partial and will not execute. You need to add to the code to create an evolutionary algorithm that evolves and executes a snake agent.
 import curses
 import random
 import operator
@@ -28,7 +29,8 @@ class SnakePlayer(list):
 		self.food = []
 
 	def getAheadLocation(self):
-		self.ahead = [ self.body[0][0] + (self.direction == S_DOWN and 1) + (self.direction == S_UP and -1), self.body[0][1] + (self.direction == S_LEFT and -1) + (self.direction == S_RIGHT and 1)] 
+		self.ahead = [ self.body[0][0] + (self.direction == S_DOWN and 1) + (self.direction == S_UP and -1), self.body[0][1] +
+		(self.direction == S_LEFT and -1) + (self.direction == S_RIGHT and 1)]
 
 	def updatePosition(self):
 		self.getAheadLocation()
@@ -107,12 +109,14 @@ def displayStrategyRun():
 
 	timer = 0
 	collided = False
+
 	while not collided and not timer == ((2*XSIZE) * YSIZE):
 
 		# Set up the display
 		win.border(0)
 		win.addstr(0, 2, 'Score : ' + str(snake.score) + ' ')
- 		win.getch()
+
+		win.getch()
 
 		## EXECUTE THE SNAKE'S BEHAVIOUR HERE ##
 
@@ -124,7 +128,7 @@ def displayStrategyRun():
 			food = placeFood(snake)
 			for f in food: win.addch(f[0], f[1], '@')
 			timer = 0
-		else:    
+		else:
 			last = snake.body.pop()
 			win.addch(last[0], last[1], ' ')
 			timer += 1 # timesteps since last eaten
@@ -135,8 +139,8 @@ def displayStrategyRun():
 
 	curses.endwin()
 
-	print collided
-	print hitBounds
+	print (collided)
+	print (hitBounds)
 	raw_input("Press to continue...")
 
 	return snake.score,
@@ -158,14 +162,13 @@ def runGame():
 	while not snake.snakeHasCollided() and not timer == XSIZE * YSIZE:
 
 		## EXECUTE THE SNAKE'S BEHAVIOUR HERE ##
-
 		snake.updatePosition()
 
 		if snake.body[0] in food:
 			snake.score += 1
 			food = placeFood(snake)
 			timer = 0
-		else:    
+		else:
 			snake.body.pop()
 			timer += 1 # timesteps since last eaten
 
@@ -181,3 +184,4 @@ def main():
 	## THIS IS WHERE YOUR CORE EVOLUTIONARY ALGORITHM WILL GO #
 
 main()
+print("m")
