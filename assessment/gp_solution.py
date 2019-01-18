@@ -5,9 +5,11 @@ import random
 import operator
 import copy
 import numpy
+import pickle
+import pandas as pd
 from functools import partial
 
-# from deap import algorithms
+from deap import algorithms
 from deap import base
 from deap import creator
 from deap import tools
@@ -16,6 +18,7 @@ from deap import gp
 S_RIGHT, S_LEFT, S_UP, S_DOWN = 0, 1, 2, 3
 XSIZE, YSIZE = 14, 14
 NFOOD = 1  # NOTE: YOU MAY NEED TO ADD A CHECK THAT THERE ARE ENOUGH SPACES LEFT FOR THE FOOD (IF THE TAIL IS VERY LONG)
+SEED = 0
 
 
 def if_then_else(condition, out1, out2):
@@ -395,43 +398,42 @@ def runGame(strategy):
 
         if snake.body[0] in food:
             snake.score += 1
-            totalScore += 50
             food = placeFood(snake)
             timer = 0
         else:
             snake.body.pop()
             timer += 1  # timesteps since last eaten
-            totalScore += 1
 
-
-    return snake.score,
+        totalScore += snake.score
+		
+    return totalScore,
 
 
 snake = SnakePlayer()
 
 pset = gp.PrimitiveSet("MAIN", 0)
-pset.addPrimitive(snake.if_obstacle_up_1, 2)
-pset.addPrimitive(snake.if_obstacle_down_1, 2)
-pset.addPrimitive(snake.if_obstacle_left_1, 2)
-pset.addPrimitive(snake.if_obstacle_right_1, 2)
+##pset.addPrimitive(snake.if_obstacle_up_1, 2)
+##pset.addPrimitive(snake.if_obstacle_down_1, 2) 
+##pset.addPrimitive(snake.if_obstacle_left_1, 2)
+##pset.addPrimitive(snake.if_obstacle_right_1, 2)
 #pset.addPrimitive(snake.if_obstacle_up_2, 2)
 #pset.addPrimitive(snake.if_obstacle_down_2, 2)
 #pset.addPrimitive(snake.if_obstacle_left_2, 2)
 #pset.addPrimitive(snake.if_obstacle_right_2, 2)
 
-#pset.addPrimitive(snake.if_tail_up_1, 2)
-#pset.addPrimitive(snake.if_tail_down_1, 2)
-#pset.addPrimitive(snake.if_tail_left_1, 2)
-#pset.addPrimitive(snake.if_tail_right_1, 2)
+pset.addPrimitive(snake.if_tail_up_1, 2)
+pset.addPrimitive(snake.if_tail_down_1, 2)
+pset.addPrimitive(snake.if_tail_left_1, 2)
+pset.addPrimitive(snake.if_tail_right_1, 2)
 #pset.addPrimitive(snake.if_tail_up_2, 2)
 #pset.addPrimitive(snake.if_tail_down_2, 2)
 #pset.addPrimitive(snake.if_tail_left_2, 2)
 #pset.addPrimitive(snake.if_tail_right_2, 2)
 
-#pset.addPrimitive(snake.if_out_of_bounds_up_1, 2)
-#pset.addPrimitive(snake.if_out_of_bounds_down_1, 2)
-#pset.addPrimitive(snake.if_out_of_bounds_left_1, 2)
-#pset.addPrimitive(snake.if_out_of_bounds_right_1, 2)
+pset.addPrimitive(snake.if_out_of_bounds_up_1, 2)
+pset.addPrimitive(snake.if_out_of_bounds_down_1, 2)
+pset.addPrimitive(snake.if_out_of_bounds_left_1, 2)
+pset.addPrimitive(snake.if_out_of_bounds_right_1, 2)
 pset.addPrimitive(snake.if_out_of_bounds_up_2, 2)
 pset.addPrimitive(snake.if_out_of_bounds_down_2, 2)
 pset.addPrimitive(snake.if_out_of_bounds_left_2, 2)
@@ -462,80 +464,52 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 def evalArtificialSnake(individual):
     strategy = gp.compile(individual, pset)
     totalScore = 0
+    score = 0
 
     for run in range(5):
-        totalScore += runGame(strategy)[0]
+        fitness = runGame(strategy)
+        totalScore += fitness[0]
 
     return totalScore/5,
 
 
 toolbox.register("evaluate", evalArtificialSnake)
-toolbox.register("select", tools.selDoubleTournament, fitness_size=10, parsimony_size= 2, fitness_first=True)
+toolbox.register("select", tools.selDoubleTournament, fitness_size=8, parsimony_size= 2, fitness_first=True)
 #toolbox.register("select", tools.selTournament, tournsize=8)
 toolbox.register("mate", gp.cxOnePoint)
 toolbox.register("expr_mut", gp.genFull, min_=0, max_=5)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
 
+stats = tools.Statistics(key=lambda ind: ind.fitness.values)
+
+stats.register("avg", numpy.mean)
+stats.register("std", numpy.std)
+stats.register("min", numpy.min)
+stats.register("max", numpy.max)
+
+hof = tools.HallOfFame(10)
+
+
+
 def main():
-    random.seed(0)
+    random.seed(SEED)
     global snake
     global pset
 
     pop = toolbox.population(n=300)
 
-    NGEN, CXPB = 1000, 0.35
+    NGEN, CXPB, MUTPB = 179, 0.45, 0.2
 
-    print("Start of evolution")
+    pop, logbook = algorithms.eaSimple(pop, toolbox, CXPB, MUTPB, NGEN, stats, halloffame=hof, verbose=True)
 
-    fitnesses = list(map(toolbox.evaluate, pop))
-    for ind, fit in zip(pop, fitnesses):
-        ind.fitness.values = fit
 
-    for g in range(NGEN):
-        print("-- Generation %i --" % g)
+    df_log = pd.DataFrame(logbook)
+    df_log.to_csv('seed_' + str(SEED) + '_ngen_' + str(NGEN) + '_cxpb_' + str(CXPB) + '.csv', index=False)
 
-        offspring = toolbox.select(pop, len(pop))
-        offspring = list(map(toolbox.clone, offspring))
-
-        for child1, child2, in zip (offspring[::2], offspring[1::2]):
-            if random.random() < CXPB:
-                toolbox.mate(child1, child2)
-
-        del child1.fitness.values
-        del child2.fitness.values
-
-        for mutant in offspring:
-            toolbox.mutate(mutant)
-            del mutant.fitness.values
-
-        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
-        fitnesses = map(toolbox.evaluate, invalid_ind)
-        for ind, fit in zip(invalid_ind, fitnesses):
-            ind.fitness.values = fit
-
-        print("evaluated %i individuals" % len(invalid_ind))
-
-        pop[:] = offspring
-
-        fits = [ind.fitness.values[0] for ind in pop]
-
-        length = len(pop)
-        mean = sum(fits) / length
-        sum2 = sum(x*x for x in fits)
-        std = abs(sum2 / length - mean**2)**0.5
-
-        print("  Min %s" % min(fits))
-        print("  Max %s" % max(fits))
-        print("  Avg %s" % mean)
-        print("  Std %s" % std)
-
-        print("-- End of evolution --")
-
-        if (g % 100 == 0):
-            bestIndividual = tools.selBest(pop, 1)[0]
-            bestStrategy = gp.compile(bestIndividual, pset)
-            displayStrategyRun(bestStrategy, g)
-
+    bestIndividual = tools.selBest(pop, 1)[0]
+    bestStrategy = gp.compile(bestIndividual, pset)
+    displayStrategyRun(bestStrategy, NGEN)
+    
 
 
 main()
