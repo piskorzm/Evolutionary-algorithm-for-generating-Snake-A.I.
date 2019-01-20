@@ -1,25 +1,11 @@
-# This code defines the agent (as in the playable version) in a way that can be called and executed from an evolutionary algorithm.
-# The code is partial and will not execute. You need to add to the code to create an evolutionary algorithm that evolves and executes a snake agent.
 import curses
-import itertools
 import random
 import operator
 import copy
 import numpy
-from scoop import futures
+from functools import partial
 import pandas as pd
-from functools import partial
 
-# This code defines the agent (as in the playable version) in a way that can be called and executed from an evolutionary algorithm.
-# The code is partial and will not execute. You need to add to the code to create an evolutionary algorithm that evolves and executes a snake agent.
-import curses
-import random
-import operator
-import copy
-import numpy
-from functools import partial
-
-# from deap import algorithms
 from deap import base
 from deap import creator
 from deap import tools
@@ -27,14 +13,15 @@ from deap import gp
 
 S_RIGHT, S_LEFT, S_UP, S_DOWN = 0, 1, 2, 3
 XSIZE, YSIZE = 14, 14
-NFOOD = 1  # NOTE: YOU MAY NEED TO ADD A CHECK THAT THERE ARE ENOUGH SPACES LEFT FOR THE FOOD (IF THE TAIL IS VERY LONG)
+NFOOD = 1
+MAX_SCORE = 133
 
-
+# Calls one of the given function depending on the condition
 def if_then_else(condition, out1, out2):
     out1() if condition() else out2()
 
 
-# This class can be used to create a basic player object (snake agent)
+# Snake agent class
 class SnakePlayer(list):
     global S_RIGHT, S_LEFT, S_UP, S_DOWN
     global XSIZE, YSIZE
@@ -64,7 +51,22 @@ class SnakePlayer(list):
         self.getAheadLocation()
         self.body.insert(0, self.ahead)
 
-    ## You are free to define more sensing options to the snake
+    def snakeHasCollided(self):
+        return self.is_obstacle_location(self.body[0])
+
+
+    # Methods used by senses
+    def is_obstacle_location(self, location):
+        return not (location[0] > 0 and location[0] < (YSIZE - 1) and location[1] > 0 and location[1] < (
+                XSIZE - 1) and location not in self.body[1:])
+
+    def is_out_of_bounds_location(self, location):
+        return not (location[0] > 0 and location[0] < (YSIZE - 1) and location[1] > 0 and location[1])
+
+    def is_tail_location(self, location):
+        return not (XSIZE - 1) and location not in self.body[1:]
+
+    # Snake terminals
     def changeDirectionUp(self):
         self.direction = S_UP
 
@@ -77,19 +79,48 @@ class SnakePlayer(list):
     def changeDirectionLeft(self):
         self.direction = S_LEFT
 
-    def snakeHasCollided(self):
-        return self.is_obstacle_location(self.body[0])
+    # Senses detecting food, wall and tail one ahead
+    def sense_wall_ahead(self):
+        self.getAheadLocation()
+        return (self.ahead[0] == 0 or self.ahead[0] == (YSIZE - 1) or self.ahead[1] == 0 or self.ahead[1] == (
+                XSIZE - 1))
 
-    def is_obstacle_location(self, location):
-        return not (location[0] > 0 and location[0] < (YSIZE - 1) and location[1] > 0 and location[1] < (
-                XSIZE - 1) and location not in self.body[1:])
+    def sense_tail_ahead(self):
+        self.getAheadLocation()
+        return self.ahead in self.body
 
-    def is_out_of_bounds_location(self, location):
-        return not (location[0] > 0 and location[0] < (YSIZE - 1) and location[1] > 0 and location[1])
+    def sense_food_ahead(self):
+        self.getAheadLocation()
+        return self.ahead in self.food
 
-    def is_tail_location(self, location):
-        return not (XSIZE - 1) and location not in self.body[1:]
+    # Sense food in every direction
+    def sense_direction_up(self):
+        return self.direction == S_UP
 
+    def sense_direction_down(self):
+        return self.direction == S_DOWN
+
+    def sense_direction_left(self):
+        return self.direction == S_LEFT
+
+    def sense_direction_right(self):
+        return self.direction == S_RIGHT
+
+
+    # Sense food in every direction
+    def sense_food_up(self):
+        return self.food[0][0] < self.body[0][0]
+
+    def sense_food_down(self):
+        return self.food[0][0] > self.body[0][0]
+
+    def sense_food_left(self):
+        return self.food[0][1] < self.body[0][1]
+
+    def sense_food_right(self):
+        return self.food[0][1] > self.body[0][1]
+
+    # Sense wall/tail 1 unit away from the head in every direction
     def sense_obstacle_up_1(self):
         up = [self.body[0][0] - 1, self.body[0][1]]
         return self.is_obstacle_location(up)
@@ -106,6 +137,7 @@ class SnakePlayer(list):
         right = [self.body[0][0], self.body[0][1] + 1]
         return self.is_obstacle_location(right)
 
+    # Sense wall/tail 2 unit away from the head in every direction
     def sense_obstacle_up_2(self):
         up = [self.body[0][0] - 2, self.body[0][1]]
         return self.is_obstacle_location(up)
@@ -122,7 +154,7 @@ class SnakePlayer(list):
         right = [self.body[0][0], self.body[0][1] + 2]
         return self.is_obstacle_location(right)
 
-
+    # Sense wall 1 unit away from the head in every direction
     def sense_out_of_bounds_up_1(self):
         up = [self.body[0][0] - 1, self.body[0][1]]
         return self.is_out_of_bounds_location(up)
@@ -139,6 +171,7 @@ class SnakePlayer(list):
         right = [self.body[0][0], self.body[0][1] + 1]
         return self.is_out_of_bounds_location(right)
 
+    # Sense wall 2 unit away from the head in every direction
     def sense_out_of_bounds_up_2(self):
         up = [self.body[0][0] - 2, self.body[0][1]]
         return self.is_out_of_bounds_location(up)
@@ -156,6 +189,7 @@ class SnakePlayer(list):
         return self.is_out_of_bounds_location(right)
 
 
+    # Sense tail 1 unit away from the head in every direction
     def sense_tail_up_1(self):
         up = [self.body[0][0] - 1, self.body[0][1]]
         return self.is_tail_location(up)
@@ -172,6 +206,7 @@ class SnakePlayer(list):
         right = [self.body[0][0], self.body[0][1] + 1]
         return self.is_tail_location(right)
 
+    # Sense tail 2 unit away from the head in every direction
     def sense_tail_up_2(self):
         up = [self.body[0][0] - 2, self.body[0][1]]
         return self.is_tail_location(up)
@@ -189,32 +224,33 @@ class SnakePlayer(list):
         return self.is_tail_location(right)
 
 
-    def sense_wall_ahead(self):
-        self.getAheadLocation()
-        return (self.ahead[0] == 0 or self.ahead[0] == (YSIZE - 1) or self.ahead[1] == 0 or self.ahead[1] == (
-                XSIZE - 1))
+    #If then else functions for PrimitiveSet
+    def if_direction_up(self, out1, out2):
+        return partial(if_then_else, self.sense_direction_up, out1, out2)
 
-    def sense_tail_ahead(self):
-        self.getAheadLocation()
-        return self.ahead in self.body
+    def if_direction_down(self, out1, out2):
+        return partial(if_then_else, self.sense_direction_down, out1, out2)
 
-    def sense_food_ahead(self):
-        self.getAheadLocation()
-        return self.ahead in self.food
+    def if_direction_left(self, out1, out2):
+        return partial(if_then_else, self.sense_direction_left, out1, out2)
 
-    def sense_food_up(self):
-        return self.food[0][0] < self.body[0][0]
+    def if_direction_right(self, out1, out2):
+        return partial(if_then_else, self.sense_direction_right, out1, out2)
 
-    def sense_food_down(self):
-        return self.food[0][0] > self.body[0][0]
 
-    def sense_food_left(self):
-        return self.food[0][1] < self.body[0][1]
+    def if_food_up(self, out1, out2):
+        return partial(if_then_else, self.sense_food_up, out1, out2)
 
-    def sense_food_right(self):
-        return self.food[0][1] > self.body[0][1]
+    def if_food_down(self, out1, out2):
+        return partial(if_then_else, self.sense_food_down, out1, out2)
 
-    # PrimitiveSet
+    def if_food_left(self, out1, out2):
+        return partial(if_then_else, self.sense_food_left, out1, out2)
+
+    def if_food_right(self, out1, out2):
+        return partial(if_then_else, self.sense_food_right, out1, out2)
+
+
     def if_wall_ahead(self, out1, out2):
         return partial(if_then_else, self.sense_wall_ahead, out1, out2)
 
@@ -223,6 +259,7 @@ class SnakePlayer(list):
 
     def if_food_ahead(self, out1, out2):
         return partial(if_then_else, self.sense_food_ahead, out1, out2)
+
 
     def if_obstacle_up_1(self, out1, out2):
         return partial(if_then_else, self.sense_obstacle_up_1, out1, out2)
@@ -299,19 +336,6 @@ class SnakePlayer(list):
         return partial(if_then_else, self.sense_tail_right_2, out1, out2)
 
 
-    def if_food_up(self, out1, out2):
-        return partial(if_then_else, self.sense_food_up, out1, out2)
-
-    def if_food_down(self, out1, out2):
-        return partial(if_then_else, self.sense_food_down, out1, out2)
-
-    def if_food_left(self, out1, out2):
-        return partial(if_then_else, self.sense_food_left, out1, out2)
-
-    def if_food_right(self, out1, out2):
-        return partial(if_then_else, self.sense_food_right, out1, out2)
-
-
 # This function places a food item in the environment
 def placeFood(snake):
     food = []
@@ -326,10 +350,7 @@ def placeFood(snake):
 snake = SnakePlayer()
 
 
-# This outline function is the same as runGame (see below). However,
-# it displays the game graphically and thus runs slower
-# This function is designed for you to be able to view and assess
-# your strategies, rather than use during the course of evolution
+# Function displaying a strategy run in terminal
 def displayStrategyRun(strategy, g):
     global snake
     global pset
@@ -351,7 +372,9 @@ def displayStrategyRun(strategy, g):
 
     timer = 0
     collided = False
-    while not collided and not timer == ((2 * XSIZE) * YSIZE) and (not len(snake.body) == 143):
+
+    # Check if max score reached
+    while not collided and not timer == ((2 * XSIZE) * YSIZE) and (snake.score < MAX_SCORE):
 
         # Set up the display
         win.border(0)
@@ -359,11 +382,9 @@ def displayStrategyRun(strategy, g):
         win.addstr(YSIZE - 1, 3, ' Gen: ' + str(g) + ' ')
 
 
-
-
         win.getch()
 
-        ## EXECUTE THE SNAKE'S BEHAVIOUR HERE ##
+        # Run strategy
         strategy()
 
         snake.updatePosition()
@@ -371,7 +392,8 @@ def displayStrategyRun(strategy, g):
         if snake.body[0] in food:
             snake.score += 1
             for f in food: win.addch(f[0], f[1], ' ')
-            food = placeFood(snake)
+            if (snake.score < MAX_SCORE - 1):
+                food = placeFood(snake)
             for f in food: win.addch(f[0], f[1], '@')
             timer = 0
         else:
@@ -388,11 +410,7 @@ def displayStrategyRun(strategy, g):
     return snake.score,
 
 
-# This outline function provides partial code for running the game with an evolved agent
-# There is no graphical output, and it runs rapidly, making it ideal for
-# you need to modify it for running your agents through the game for evaluation
-# which will depend on what type of EA you have used, etc.
-# Feel free to make any necessary modifications to this section.
+# This function runs a strategy run for evaluation returning the snake score
 def runGame(strategy):
     global snake
 
@@ -402,7 +420,8 @@ def runGame(strategy):
 
     totalScore = 0
 
-    while not snake.snakeHasCollided() and not timer == XSIZE * YSIZE and (not len(snake.body) == 143):
+    # Check if max score reached
+    while not snake.snakeHasCollided() and not timer == XSIZE * YSIZE and (snake.score < MAX_SCORE):
 
         strategy()
 
@@ -410,23 +429,49 @@ def runGame(strategy):
 
         if snake.body[0] in food:
             snake.score += 1
-            totalScore += 50
-            food = placeFood(snake)
+            if (snake.score < MAX_SCORE - 1):
+                food = placeFood(snake)
             timer = 0
         else:
             snake.body.pop()
             timer += 1  # timesteps since last eaten
-            totalScore += 1
 
     if(len(snake.body) == 143):
         print("maxx score")
 
     return snake.score,
 
+# Function evaluation for an individual returning the avarage score after 5 runs
+def evalArtificialSnake(individual):
+    strategy = gp.compile(individual, pset)
+    totalScore = 0
+
+    for run in range(5):
+        totalScore += runGame(strategy)[0]
+
+    return totalScore/5,
+
 
 snake = SnakePlayer()
 
 pset = gp.PrimitiveSet("MAIN", 0)
+
+# List of all possible primitives. Uncomment to apply different combination of senses.
+
+#pset.addPrimitive(snake.if_direction_up, 2)
+#pset.addPrimitive(snake.if_diretion_down, 2)
+#pset.addPrimitive(snake.if_direction_left, 2)
+#pset.addPrimitive(snake.if_direction_right, 2)
+
+#pset.addPrimitive(snake.if_tail_ahead, 2)
+#pset.addPrimitive(snake.if_wall_ahead, 2)
+#pset.addPrimitive(snake.if_food_ahead, 2)
+
+pset.addPrimitive(snake.if_food_up, 2)
+pset.addPrimitive(snake.if_food_down, 2)
+pset.addPrimitive(snake.if_food_left, 2)
+pset.addPrimitive(snake.if_food_right, 2)
+
 pset.addPrimitive(snake.if_obstacle_up_1, 2)
 pset.addPrimitive(snake.if_obstacle_down_1, 2)
 pset.addPrimitive(snake.if_obstacle_left_1, 2)
@@ -454,10 +499,6 @@ pset.addPrimitive(snake.if_out_of_bounds_down_2, 2)
 pset.addPrimitive(snake.if_out_of_bounds_left_2, 2)
 pset.addPrimitive(snake.if_out_of_bounds_right_2, 2)
 
-pset.addPrimitive(snake.if_food_up, 2)
-pset.addPrimitive(snake.if_food_down, 2)
-pset.addPrimitive(snake.if_food_left, 2)
-pset.addPrimitive(snake.if_food_right, 2)
 pset.addTerminal(snake.changeDirectionUp)
 pset.addTerminal(snake.changeDirectionRight)
 pset.addTerminal(snake.changeDirectionDown)
@@ -466,29 +507,15 @@ pset.addTerminal(snake.changeDirectionLeft)
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 creator.create("Individual", gp.PrimitiveTree, fitness=creator.FitnessMax)
 
+# Setup DEAP toolbox
 toolbox = base.Toolbox()
 
-# Attribute generator
 toolbox.register("expr_init", gp.genFull, pset=pset, min_=1, max_=2)
-
-# Structure initializers
 toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.expr_init)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
-
-
-def evalArtificialSnake(individual):
-    strategy = gp.compile(individual, pset)
-    totalScore = 0
-
-    for run in range(5):
-        totalScore += runGame(strategy)[0]
-
-    return totalScore/5,
-
-
 toolbox.register("evaluate", evalArtificialSnake)
 toolbox.register("select", tools.selDoubleTournament, fitness_size=10, parsimony_size= 2, fitness_first=True)
-#toolbox.register("select", tools.selTournament, tournsize=8)
+##toolbox.register("select", tools.selTournament, tournsize=8)
 toolbox.register("mate", gp.cxOnePoint)
 toolbox.register("expr_mut", gp.genFull, min_=0, max_=5)
 toolbox.register("mutate", gp.mutUniform, expr=toolbox.expr_mut, pset=pset)
@@ -502,18 +529,20 @@ stats.register("max", numpy.max)
 
 logbook = tools.Logbook()
 logbook.header = "gen", "evals", "std", "min", "avg", "max"
-def main():
 
+def main():
     global snake
     global pset
 
-
-
+    # Specify the random seed
     SEED = 0
-    POP_SIZE, NGEN, CXPB = 300, 1000, 0.40
+
+    # Set parameters for evolution
+    POP_SIZE, NGEN, CXPB, MUTPB = 300, 1000, 0.40, 1.0
 
     random.seed(SEED)
     pop = toolbox.population(n=POP_SIZE)
+    bestIndividual = 0
 
     print("Start of evolution")
 
@@ -533,8 +562,9 @@ def main():
         del child2.fitness.values
 
         for mutant in offspring:
-            toolbox.mutate(mutant)
-            del mutant.fitness.values
+            if random.random() < MUTPB:
+                toolbox.mutate(mutant)
+                del mutant.fitness.values
 
         invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
         fitnesses = map(toolbox.evaluate, invalid_ind)
@@ -548,20 +578,24 @@ def main():
 
         record = stats.compile(pop)
 
-
         logbook.record(gen=g, evals=len(invalid_ind), **record)
         print(logbook.stream)
 
+        bestBestInCurrentPopulation = tools.selBest(pop, 1)[0]
 
-        if (g % 200 == 0 and g > 0):
-            bestIndividual = tools.selBest(pop, 1)[0]
-            bestStrategy = gp.compile(bestIndividual, pset)
-            displayStrategyRun(bestStrategy, g)
+        # Store the best individual yet
+        if bestIndividual == 0 or bestBestInCurrentPopulation.fitness.values[0] >= bestIndividual.fitness.values[0]:
+            bestIndividual = bestBestInCurrentPopulation
 
 
+    # Store logbook in csv file
     df_log = pd.DataFrame(logbook)
-    df_log.to_csv('seed_' + str(SEED) + '_ngen_' + str(NGEN) + '_cxpb_' + str(CXPB) + '_pop_' + POP_SIZE + '.csv', index=True)
+    df_log.to_csv('seed_' + str(SEED) + '_pop_' + str(POP_SIZE) + '_ngen_' + str(NGEN) + '_cxpb_' + str(CXPB) + '_mutpb_' + str(MUTPB) + '.csv', index=False)
 
+    print(bestIndividual)
 
+    bestStrategy = gp.compile(bestIndividual, pset)
+    displayStrategyRun(bestStrategy, g)
 
-main()
+if __name__ == "__main__":
+    main()
