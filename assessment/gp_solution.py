@@ -1,15 +1,25 @@
 # This code defines the agent (as in the playable version) in a way that can be called and executed from an evolutionary algorithm.
 # The code is partial and will not execute. You need to add to the code to create an evolutionary algorithm that evolves and executes a snake agent.
 import curses
+import itertools
 import random
 import operator
 import copy
 import numpy
-import pickle
+from scoop import futures
 import pandas as pd
 from functools import partial
 
-from deap import algorithms
+# This code defines the agent (as in the playable version) in a way that can be called and executed from an evolutionary algorithm.
+# The code is partial and will not execute. You need to add to the code to create an evolutionary algorithm that evolves and executes a snake agent.
+import curses
+import random
+import operator
+import copy
+import numpy
+from functools import partial
+
+# from deap import algorithms
 from deap import base
 from deap import creator
 from deap import tools
@@ -18,7 +28,6 @@ from deap import gp
 S_RIGHT, S_LEFT, S_UP, S_DOWN = 0, 1, 2, 3
 XSIZE, YSIZE = 14, 14
 NFOOD = 1  # NOTE: YOU MAY NEED TO ADD A CHECK THAT THERE ARE ENOUGH SPACES LEFT FOR THE FOOD (IF THE TAIL IS VERY LONG)
-SEED = 0
 
 
 def if_then_else(condition, out1, out2):
@@ -43,6 +52,9 @@ class SnakePlayer(list):
         self.score = 0
         self.ahead = []
         self.food = []
+
+    def getScore(self):
+        return self.score
 
     def getAheadLocation(self):
         self.ahead = [self.body[0][0] + (self.direction == S_DOWN and 1) + (self.direction == S_UP and -1),
@@ -339,7 +351,7 @@ def displayStrategyRun(strategy, g):
 
     timer = 0
     collided = False
-    while not collided and not timer == ((2 * XSIZE) * YSIZE):
+    while not collided and not timer == ((2 * XSIZE) * YSIZE) and (not len(snake.body) == 143):
 
         # Set up the display
         win.border(0)
@@ -390,7 +402,7 @@ def runGame(strategy):
 
     totalScore = 0
 
-    while not snake.snakeHasCollided() and not timer == XSIZE * YSIZE:
+    while not snake.snakeHasCollided() and not timer == XSIZE * YSIZE and (not len(snake.body) == 143):
 
         strategy()
 
@@ -398,42 +410,45 @@ def runGame(strategy):
 
         if snake.body[0] in food:
             snake.score += 1
+            totalScore += 50
             food = placeFood(snake)
             timer = 0
         else:
             snake.body.pop()
             timer += 1  # timesteps since last eaten
+            totalScore += 1
 
-        totalScore += snake.score
-		
-    return totalScore,
+    if(len(snake.body) == 143):
+        print("maxx score")
+
+    return snake.score,
 
 
 snake = SnakePlayer()
 
 pset = gp.PrimitiveSet("MAIN", 0)
-##pset.addPrimitive(snake.if_obstacle_up_1, 2)
-##pset.addPrimitive(snake.if_obstacle_down_1, 2) 
-##pset.addPrimitive(snake.if_obstacle_left_1, 2)
-##pset.addPrimitive(snake.if_obstacle_right_1, 2)
+pset.addPrimitive(snake.if_obstacle_up_1, 2)
+pset.addPrimitive(snake.if_obstacle_down_1, 2)
+pset.addPrimitive(snake.if_obstacle_left_1, 2)
+pset.addPrimitive(snake.if_obstacle_right_1, 2)
 #pset.addPrimitive(snake.if_obstacle_up_2, 2)
 #pset.addPrimitive(snake.if_obstacle_down_2, 2)
 #pset.addPrimitive(snake.if_obstacle_left_2, 2)
 #pset.addPrimitive(snake.if_obstacle_right_2, 2)
 
-pset.addPrimitive(snake.if_tail_up_1, 2)
-pset.addPrimitive(snake.if_tail_down_1, 2)
-pset.addPrimitive(snake.if_tail_left_1, 2)
-pset.addPrimitive(snake.if_tail_right_1, 2)
+#pset.addPrimitive(snake.if_tail_up_1, 2)
+#pset.addPrimitive(snake.if_tail_down_1, 2)
+#pset.addPrimitive(snake.if_tail_left_1, 2)
+#pset.addPrimitive(snake.if_tail_right_1, 2)
 #pset.addPrimitive(snake.if_tail_up_2, 2)
 #pset.addPrimitive(snake.if_tail_down_2, 2)
 #pset.addPrimitive(snake.if_tail_left_2, 2)
 #pset.addPrimitive(snake.if_tail_right_2, 2)
 
-pset.addPrimitive(snake.if_out_of_bounds_up_1, 2)
-pset.addPrimitive(snake.if_out_of_bounds_down_1, 2)
-pset.addPrimitive(snake.if_out_of_bounds_left_1, 2)
-pset.addPrimitive(snake.if_out_of_bounds_right_1, 2)
+#pset.addPrimitive(snake.if_out_of_bounds_up_1, 2)
+#pset.addPrimitive(snake.if_out_of_bounds_down_1, 2)
+#pset.addPrimitive(snake.if_out_of_bounds_left_1, 2)
+#pset.addPrimitive(snake.if_out_of_bounds_right_1, 2)
 pset.addPrimitive(snake.if_out_of_bounds_up_2, 2)
 pset.addPrimitive(snake.if_out_of_bounds_down_2, 2)
 pset.addPrimitive(snake.if_out_of_bounds_left_2, 2)
@@ -464,17 +479,15 @@ toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 def evalArtificialSnake(individual):
     strategy = gp.compile(individual, pset)
     totalScore = 0
-    score = 0
 
     for run in range(5):
-        fitness = runGame(strategy)
-        totalScore += fitness[0]
+        totalScore += runGame(strategy)[0]
 
     return totalScore/5,
 
 
 toolbox.register("evaluate", evalArtificialSnake)
-toolbox.register("select", tools.selDoubleTournament, fitness_size=8, parsimony_size= 2, fitness_first=True)
+toolbox.register("select", tools.selDoubleTournament, fitness_size=10, parsimony_size= 2, fitness_first=True)
 #toolbox.register("select", tools.selTournament, tournsize=8)
 toolbox.register("mate", gp.cxOnePoint)
 toolbox.register("expr_mut", gp.genFull, min_=0, max_=5)
@@ -487,30 +500,68 @@ stats.register("std", numpy.std)
 stats.register("min", numpy.min)
 stats.register("max", numpy.max)
 
-hof = tools.HallOfFame(10)
-
-
-
+logbook = tools.Logbook()
+logbook.header = "gen", "evals", "std", "min", "avg", "max"
 def main():
-    random.seed(SEED)
+
     global snake
     global pset
 
-    pop = toolbox.population(n=300)
 
-    NGEN, CXPB, MUTPB = 179, 0.45, 0.2
 
-    pop, logbook = algorithms.eaSimple(pop, toolbox, CXPB, MUTPB, NGEN, stats, halloffame=hof, verbose=True)
+    SEED = 0
+    POP_SIZE, NGEN, CXPB = 300, 1000, 0.40
+
+    random.seed(SEED)
+    pop = toolbox.population(n=POP_SIZE)
+
+    print("Start of evolution")
+
+    fitnesses = list(map(toolbox.evaluate, pop))
+    for ind, fit in zip(pop, fitnesses):
+        ind.fitness.values = fit
+
+    for g in range(NGEN):
+        offspring = toolbox.select(pop, len(pop))
+        offspring = list(map(toolbox.clone, offspring))
+
+        for child1, child2, in zip (offspring[::2], offspring[1::2]):
+            if random.random() < CXPB:
+                toolbox.mate(child1, child2)
+
+        del child1.fitness.values
+        del child2.fitness.values
+
+        for mutant in offspring:
+            toolbox.mutate(mutant)
+            del mutant.fitness.values
+
+        invalid_ind = [ind for ind in offspring if not ind.fitness.valid]
+        fitnesses = map(toolbox.evaluate, invalid_ind)
+        for ind, fit in zip(invalid_ind, fitnesses):
+            ind.fitness.values = fit
+
+
+        pop[:] = offspring
+
+        fits = [ind.fitness.values[0] for ind in pop]
+
+        record = stats.compile(pop)
+
+
+        logbook.record(gen=g, evals=len(invalid_ind), **record)
+        print(logbook.stream)
+
+
+        if (g % 200 == 0 and g > 0):
+            bestIndividual = tools.selBest(pop, 1)[0]
+            bestStrategy = gp.compile(bestIndividual, pset)
+            displayStrategyRun(bestStrategy, g)
 
 
     df_log = pd.DataFrame(logbook)
-    df_log.to_csv('seed_' + str(SEED) + '_ngen_' + str(NGEN) + '_cxpb_' + str(CXPB) + '.csv', index=False)
+    df_log.to_csv('seed_' + str(SEED) + '_ngen_' + str(NGEN) + '_cxpb_' + str(CXPB) + '_pop_' + POP_SIZE + '.csv', index=True)
 
-    bestIndividual = tools.selBest(pop, 1)[0]
-    bestStrategy = gp.compile(bestIndividual, pset)
-    displayStrategyRun(bestStrategy, NGEN)
-    
 
 
 main()
-print("done")
