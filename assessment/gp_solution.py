@@ -57,14 +57,14 @@ class SnakePlayer(list):
 
     # Methods used by senses
     def is_obstacle_location(self, location):
-        return not (location[0] > 0 and location[0] < (YSIZE - 1) and location[1] > 0 and location[1] < (
-                XSIZE - 1) and location not in self.body[1:])
+        return not (location[0] > 0 and location[0] < (YSIZE - 1) and location[1] > 0 and location[1] < (XSIZE - 1)
+                and location not in self.body[1:])
 
     def is_out_of_bounds_location(self, location):
-        return not (location[0] > 0 and location[0] < (YSIZE - 1) and location[1] > 0 and location[1])
+        return not (location[0] > 0 and location[0] < (YSIZE - 1) and location[1] > 0 and  location[1] < (XSIZE - 1))
 
     def is_tail_location(self, location):
-        return not (XSIZE - 1) and location not in self.body[1:]
+        return location not in self.body[1:]
 
     # Snake terminals
     def changeDirectionUp(self):
@@ -538,7 +538,7 @@ def main():
     SEED = 0
 
     # Set parameters for evolution
-    POP_SIZE, NGEN, CXPB, MUTPB = 300, 1000, 0.40, 1.0
+    POP_SIZE, NGEN, CXPB, MUTPB = 300, 2000, 0.4, 1.0
 
     random.seed(SEED)
     pop = toolbox.population(n=POP_SIZE)
@@ -586,6 +586,11 @@ def main():
         # Store the best individual yet
         if bestIndividual == 0 or bestBestInCurrentPopulation.fitness.values[0] >= bestIndividual.fitness.values[0]:
             bestIndividual = bestBestInCurrentPopulation
+
+        if g == 500 or g == 1000 or g ==1500:
+            df_log = pd.DataFrame(logbook)
+            df_log.to_csv('seed_' + str(SEED) + '_pop_' + str(POP_SIZE) + '_ngen_' + str(NGEN) + '_cxpb_' + str(CXPB) + '_mutpb_' + str(MUTPB) + '.csv', index=False)
+
 
 
     # Store logbook in csv file
