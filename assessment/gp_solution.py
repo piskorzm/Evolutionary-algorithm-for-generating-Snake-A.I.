@@ -1,3 +1,5 @@
+#Exam No. Y3838392
+
 import curses
 import random
 import operator
@@ -436,9 +438,6 @@ def runGame(strategy):
             snake.body.pop()
             timer += 1  # timesteps since last eaten
 
-    if(len(snake.body) == 143):
-        print("maxx score")
-
     return snake.score,
 
 # Function evaluation for an individual returning the avarage score after 5 runs
@@ -538,7 +537,7 @@ def main():
     SEED = 0
 
     # Set parameters for evolution
-    POP_SIZE, NGEN, CXPB, MUTPB = 300, 2000, 0.4, 1.0
+    POP_SIZE, NGEN, CXPB, MUTPB = 300, 1000, 0.4, 1.0
 
     random.seed(SEED)
     pop = toolbox.population(n=POP_SIZE)
@@ -587,13 +586,10 @@ def main():
         if bestIndividual == 0 or bestBestInCurrentPopulation.fitness.values[0] >= bestIndividual.fitness.values[0]:
             bestIndividual = bestBestInCurrentPopulation
 
-        if g == 500 or g == 1000 or g ==1500:
-            df_log = pd.DataFrame(logbook)
-            df_log.to_csv('seed_' + str(SEED) + '_pop_' + str(POP_SIZE) + '_ngen_' + str(NGEN) + '_cxpb_' + str(CXPB) + '_mutpb_' + str(MUTPB) + '.csv', index=False)
 
 
 
-    # Store logbook in csv file
+    # Store logbook in a csv file
     df_log = pd.DataFrame(logbook)
     df_log.to_csv('seed_' + str(SEED) + '_pop_' + str(POP_SIZE) + '_ngen_' + str(NGEN) + '_cxpb_' + str(CXPB) + '_mutpb_' + str(MUTPB) + '.csv', index=False)
 
