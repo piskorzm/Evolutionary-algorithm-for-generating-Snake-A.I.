@@ -81,34 +81,6 @@ class SnakePlayer(list):
     def changeDirectionLeft(self):
         self.direction = S_LEFT
 
-    # Senses detecting food, wall and tail one ahead
-    def sense_wall_ahead(self):
-        self.getAheadLocation()
-        return (self.ahead[0] == 0 or self.ahead[0] == (YSIZE - 1) or self.ahead[1] == 0 or self.ahead[1] == (
-                XSIZE - 1))
-
-    def sense_tail_ahead(self):
-        self.getAheadLocation()
-        return self.ahead in self.body
-
-    def sense_food_ahead(self):
-        self.getAheadLocation()
-        return self.ahead in self.food
-
-    # Sense food in every direction
-    def sense_direction_up(self):
-        return self.direction == S_UP
-
-    def sense_direction_down(self):
-        return self.direction == S_DOWN
-
-    def sense_direction_left(self):
-        return self.direction == S_LEFT
-
-    def sense_direction_right(self):
-        return self.direction == S_RIGHT
-
-
     # Sense food in every direction
     def sense_food_up(self):
         return self.food[0][0] < self.body[0][0]
@@ -227,19 +199,6 @@ class SnakePlayer(list):
 
 
     #If then else functions for PrimitiveSet
-    def if_direction_up(self, out1, out2):
-        return partial(if_then_else, self.sense_direction_up, out1, out2)
-
-    def if_direction_down(self, out1, out2):
-        return partial(if_then_else, self.sense_direction_down, out1, out2)
-
-    def if_direction_left(self, out1, out2):
-        return partial(if_then_else, self.sense_direction_left, out1, out2)
-
-    def if_direction_right(self, out1, out2):
-        return partial(if_then_else, self.sense_direction_right, out1, out2)
-
-
     def if_food_up(self, out1, out2):
         return partial(if_then_else, self.sense_food_up, out1, out2)
 
@@ -251,16 +210,6 @@ class SnakePlayer(list):
 
     def if_food_right(self, out1, out2):
         return partial(if_then_else, self.sense_food_right, out1, out2)
-
-
-    def if_wall_ahead(self, out1, out2):
-        return partial(if_then_else, self.sense_wall_ahead, out1, out2)
-
-    def if_tail_ahead(self, out1, out2):
-        return partial(if_then_else, self.sense_tail_ahead, out1, out2)
-
-    def if_food_ahead(self, out1, out2):
-        return partial(if_then_else, self.sense_food_ahead, out1, out2)
 
 
     def if_obstacle_up_1(self, out1, out2):
@@ -456,15 +405,6 @@ snake = SnakePlayer()
 pset = gp.PrimitiveSet("MAIN", 0)
 
 # List of all possible primitives. Uncomment to apply different combination of senses.
-
-#pset.addPrimitive(snake.if_direction_up, 2)
-#pset.addPrimitive(snake.if_diretion_down, 2)
-#pset.addPrimitive(snake.if_direction_left, 2)
-#pset.addPrimitive(snake.if_direction_right, 2)
-
-#pset.addPrimitive(snake.if_tail_ahead, 2)
-#pset.addPrimitive(snake.if_wall_ahead, 2)
-#pset.addPrimitive(snake.if_food_ahead, 2)
 
 pset.addPrimitive(snake.if_food_up, 2)
 pset.addPrimitive(snake.if_food_down, 2)
