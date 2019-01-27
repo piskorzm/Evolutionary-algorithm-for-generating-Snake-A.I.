@@ -7,6 +7,7 @@ import copy
 import numpy
 from functools import partial
 import pandas as pd
+import time
 
 from deap import base
 from deap import creator
@@ -18,7 +19,7 @@ XSIZE, YSIZE = 14, 14
 NFOOD = 1
 MAX_SCORE = 133
 
-# Calls one of the given function depending on the condition
+# Calls one of the given function depending on the result of the condition function
 def if_then_else(condition, out1, out2):
     out1() if condition() else out2()
 
@@ -473,6 +474,7 @@ def main():
     global snake
     global pset
 
+    start, end = 0,0
     # Specify the random seed
     SEED = 0
 
@@ -483,7 +485,7 @@ def main():
     pop = toolbox.population(n=POP_SIZE)
     bestIndividual = 0
 
-    print("Start of evolution")
+    start = time.time()
 
     fitnesses = list(map(toolbox.evaluate, pop))
     for ind, fit in zip(pop, fitnesses):
@@ -527,13 +529,17 @@ def main():
             bestIndividual = bestBestInCurrentPopulation
 
 
-
+    end = time.time()
 
     # Store logbook in a csv file
     df_log = pd.DataFrame(logbook)
     df_log.to_csv('seed_' + str(SEED) + '_pop_' + str(POP_SIZE) + '_ngen_' + str(NGEN) + '_cxpb_' + str(CXPB) + '_mutpb_' + str(MUTPB) + '.csv', index=False)
 
+    # Print the best individual
     print(bestIndividual)
+
+    # Print the time taken to execute the algorithm
+    print(end - start)
 
     bestStrategy = gp.compile(bestIndividual, pset)
     displayStrategyRun(bestStrategy, g)

@@ -1,3 +1,6 @@
+Senses used: food_up/down/left/right, obstacle_1_up/down/left/right, out_of_bonds_2_up/down/left/right
+Parameters: random_seed = 3, pop_size = 300, ngen = 1000, cxpb = 0.4, mutpb = 1.0
+
 if_food_up
 (
 	if_obstacle_left_1
